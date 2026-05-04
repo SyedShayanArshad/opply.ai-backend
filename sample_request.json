@@ -1,0 +1,48 @@
+{
+  "student_profile": {
+    "degree_program": "BS Computer Science",
+    "semester": 6,
+    "cgpa": 3.2,
+    "profile_summary": "Semester 6 BSCS student focused on AI and software engineering opportunities, with project and internship exposure.",
+    "skills": ["python", "react", "sql"],
+    "interests": ["ai", "data science", "scholarships"],
+    "preferred_opportunity_types": ["internship", "scholarship"],
+    "financial_need": "high",
+    "location_preference": "any",
+    "location_text": "Lahore, Pakistan",
+    "past_experience": "1 internship, 2 projects"
+  },
+  "emails": [
+    {
+      "id": "1",
+      "subject": "2026 Summer Internship Program — Applications Open",
+      "sender": "careers@acme.com",
+      "raw": "Subject: 2026 Summer Internship Program — Applications Open\nFrom: careers@acme.com\n\nWe are excited to announce our 10-week Summer Internship Program for Software Engineering.\n\nApply by: May 10, 2026\nEligibility: BSCS/SE students in 5th semester or above.\nRequired: CV, transcript, GitHub/portfolio link.\nApply here: https://acme.com/internships/apply\n"
+    },
+    {
+      "id": "2",
+      "subject": "Merit + Need Scholarship (Batch 2026) — Deadline soon",
+      "sender": "scholarships@university.edu",
+      "raw": "Subject: Merit + Need Scholarship (Batch 2026) — Deadline soon\nFrom: scholarships@university.edu\n\nThe university is accepting applications for the Merit + Need Scholarship.\nDeadline: April 30, 2026 (11:59 PM)\nEligibility: Minimum CGPA 3.0, enrolled full-time.\nDocuments: Application form, CNIC copy, fee challan, transcript, financial documents.\nDetails: https://university.edu/scholarships/merit-need\nContact: scholarships@university.edu\n"
+    },
+    {
+      "id": "3",
+      "subject": "AI Research Fellowship — Fully Funded",
+      "sender": "fellowships@researchlab.org",
+      "raw": "Subject: AI Research Fellowship — Fully Funded\nFrom: fellowships@researchlab.org\n\nWe invite applications for a fully funded AI research fellowship.\nApply by: June 15, 2026\nRequirements: Python, ML basics, ability to commit 10 hrs/week.\nBenefits: Stipend, mentorship, certificate.\nApply: https://researchlab.org/fellowship/apply\n"
+    },
+    {
+      "id": "4",
+      "subject": "Hackathon: Build for Good — Win prizes",
+      "sender": "events@hackhub.io",
+      "raw": "Subject: Hackathon: Build for Good — Win prizes\nFrom: events@hackhub.io\n\nJoin our weekend hackathon. Registration closes May 3, 2026.\nEligibility: University students; teams of up to 4.\nRegister: https://hackhub.io/build-for-good\n"
+    },
+    {
+      "id": "5",
+      "subject": "Newsletter April — Campus Updates",
+      "sender": "newsletter@university.edu",
+      "raw": "Subject: Newsletter April — Campus Updates\nFrom: newsletter@university.edu\n\nThis is the monthly newsletter with campus updates, cafeteria timings, and announcements.\nTo unsubscribe click here.\n"
+    }
+  ],
+  "notice_text": "Note: The scholarship requires a brief personal statement (300-500 words)."
+}

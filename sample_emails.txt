@@ -1,0 +1,49 @@
+Subject: 2026 Summer Internship Program — Applications Open
+From: careers@acme.com
+
+We are excited to announce our 10-week Summer Internship Program for Software Engineering.
+
+Apply by: May 10, 2026
+Eligibility: BSCS/SE students in 5th semester or above.
+Required: CV, transcript, GitHub/portfolio link.
+Apply here: https://acme.com/internships/apply
+
+---
+
+Subject: Merit + Need Scholarship (Batch 2026) — Deadline soon
+From: scholarships@university.edu
+
+The university is accepting applications for the Merit + Need Scholarship.
+Deadline: April 30, 2026 (11:59 PM)
+Eligibility: Minimum CGPA 3.0, enrolled full-time.
+Documents: Application form, CNIC copy, fee challan, transcript, financial documents.
+Details: https://university.edu/scholarships/merit-need
+Contact: scholarships@university.edu
+
+---
+
+Subject: AI Research Fellowship — Fully Funded
+From: fellowships@researchlab.org
+
+We invite applications for a fully funded AI research fellowship.
+Apply by: June 15, 2026
+Requirements: Python, ML basics, ability to commit 10 hrs/week.
+Benefits: Stipend, mentorship, certificate.
+Apply: https://researchlab.org/fellowship/apply
+
+---
+
+Subject: Hackathon: Build for Good — Win prizes
+From: events@hackhub.io
+
+Join our weekend hackathon. Registration closes May 3, 2026.
+Eligibility: University students; teams of up to 4.
+Register: https://hackhub.io/build-for-good
+
+---
+
+Subject: Newsletter April — Campus Updates
+From: newsletter@university.edu
+
+This is the monthly newsletter with campus updates, cafeteria timings, and announcements.
+To unsubscribe click here.
