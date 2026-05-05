@@ -36,15 +36,25 @@ _llm = MistralLLM()
 
 def _cors_origin() -> str:
     import os
-    return os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+    frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+    # Clean the origin: remove trailing slash if present
+    if frontend_origin.endswith("/"):
+        frontend_origin = frontend_origin[:-1]
+    return frontend_origin
 
+
+origins = [
+    _cors_origin(),
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[_cors_origin()],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
 
