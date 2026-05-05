@@ -122,7 +122,7 @@ async def google_callback(code: str, state: str, session: Session = Depends(get_
     frontend_url = os.getenv("FRONTEND_ORIGIN")
     if not frontend_url:
         if os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_URL"):
-            frontend_url = "https://opply-ai.vercel.app"
+            frontend_url = "https://oppy-ai.vercel.app"
         else:
             frontend_url = "http://localhost:5173"
             
