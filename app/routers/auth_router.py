@@ -96,7 +96,7 @@ def google_login(token: str):
         "client_id": client_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
-        "scope": "https://mail.google.com/",
+        "scope": "openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/gmail.readonly",
         "access_type": "offline",
         "prompt": "consent",
         "state": token # pass the user's jwt as state to identify them on callback
