@@ -249,7 +249,6 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
         # Check if already processed
         exists = session.exec(select(DBEmailRecord).where(DBEmailRecord.email_id == message_id, DBEmailRecord.user_id == user.id)).first()
         if exists:
-            logger.info("Email %s already processed for user %s. Skipping.", message_id, user.email)
             continue
 
         parsed = em["parsed"]
@@ -326,50 +325,21 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
                 source="gmail",
             )
             
-                # WhatsApp Alert Integration
-                if user.whatsapp_enabled and user.phone_number:
-                    steps_text = "\n- ".join(checklist) if checklist else "No specific steps found."
-                    opp_type = ex.opportunity_type.value.title() if ex.opportunity_type else "Opportunity"
-                    msg = (
-                        f"🚀 *New {opp_type} Found!*\n\n"
-                        f"*Subject:* {email_input.subject}\n"
-                        f"*From:* {email_input.sender}\n"
-                        f"*Score:* {score.total:.1f}/10\n\n"
-                        f"*Summary:*\n{ex.summary}\n\n"
-                        f"*Next Steps:*\n- {steps_text}\n\n"
-                        f"📱 Check your Opply AI dashboard for full details!"
-                    )
-                    logger.info("Attempting WhatsApp alert for %s (Email: %s)", user.email, email_input.subject)
-                    try:
-                        success, sid, error_code = send_whatsapp_alert(user.phone_number, msg)
-                        
-                        if success:
-                            await manager.send_personal_message({
-                                "type": "whatsapp_status",
-                                "status": "success",
-                                "message": f"WhatsApp notification successfully sent for: {email_input.subject[:30]}..."
-                            }, user.id)
-                        elif error_code == "limit_exceeded":
-                            await manager.send_personal_message({
-                                "type": "whatsapp_status",
-                                "status": "warning",
-                                "message": "Twilio Sandbox limit reached. WhatsApp notification could not be delivered, but you can find all details in your dashboard."
-                            }, user.id)
-                        else:
-                            await manager.send_personal_message({
-                                "type": "whatsapp_status",
-                                "status": "error",
-                                "message": f"WhatsApp delivery encountered an issue: {error_code or 'Unknown error'}. Please verify your notification settings."
-                            }, user.id)
-                    except Exception as we:
-                        logger.error("Error in WhatsApp integration: %s", we)
-                        await manager.send_personal_message({
-                            "type": "whatsapp_status",
-                            "status": "error",
-                            "message": "WhatsApp service is temporarily unavailable. Please check your settings."
-                        }, user.id)
-                elif user.whatsapp_enabled:
-                    logger.warning("WhatsApp enabled for %s but no phone number found.", user.email)
+            # WhatsApp Alert Integration
+            if user.whatsapp_enabled and user.phone_number:
+                steps_text = "\n- ".join(checklist) if checklist else "No specific steps found."
+                opp_type = ex.opportunity_type.value.title() if ex.opportunity_type else "Opportunity"
+                msg = (
+                    f"🚀 *New {opp_type} Found!*\n\n"
+                    f"*Subject:* {email_input.subject}\n"
+                    f"*From:* {email_input.sender}\n"
+                    f"*Score:* {score.total:.1f}/10\n\n"
+                    f"*Summary:*\n{ex.summary}\n\n"
+                    f"*Next Steps:*\n- {steps_text}\n\n"
+                    f"📱 Check your Opply AI dashboard for full details!"
+                )
+                logger.info("Sending WhatsApp alert to %s for email: %s", user.email, email_input.subject)
+                send_whatsapp_alert(user.phone_number, msg)
 
         session.add(record)
         session.commit()
