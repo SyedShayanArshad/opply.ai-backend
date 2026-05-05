@@ -22,10 +22,10 @@ def _google_redirect_uri() -> str:
     if env_uri:
         return env_uri
         
-    # 2. Try to build it from the FRONTEND_ORIGIN but pointing to the backend
-    # Actually, the safest is to fall back to the known Render URL if we are in production
+    # 2. Safest is to fall back to the known Render URL if we are in production
+    if os.getenv("RENDER_EXTERNAL_URL"):
+        return f"{os.getenv('RENDER_EXTERNAL_URL')}/api/auth/google/callback"
     if os.getenv("RENDER"):
-        # Replace this with your actual Render backend name if you want to hardcode a fallback
         return "https://opply-ai-backend.onrender.com/api/auth/google/callback"
         
     return "http://localhost:8000/api/auth/google/callback"
@@ -119,7 +119,13 @@ def google_login(token: str):
 
 @router.get("/google/callback")
 async def google_callback(code: str, state: str, session: Session = Depends(get_session)):
-    frontend_url = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+    frontend_url = os.getenv("FRONTEND_ORIGIN")
+    if not frontend_url:
+        if os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_URL"):
+            frontend_url = "https://opply-ai.vercel.app"
+        else:
+            frontend_url = "http://localhost:5173"
+            
     if frontend_url.endswith("/"):
         frontend_url = frontend_url[:-1]
     

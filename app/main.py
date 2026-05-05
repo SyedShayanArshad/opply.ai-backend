@@ -36,7 +36,13 @@ _llm = MistralLLM()
 
 def _cors_origin() -> str:
     import os
-    frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+    frontend_origin = os.getenv("FRONTEND_ORIGIN")
+    if not frontend_origin:
+        if os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_URL"):
+            frontend_origin = "https://opply-ai.vercel.app"
+        else:
+            frontend_origin = "http://localhost:5173"
+            
     # Clean the origin: remove trailing slash if present
     if frontend_origin.endswith("/"):
         frontend_origin = frontend_origin[:-1]
@@ -45,6 +51,7 @@ def _cors_origin() -> str:
 
 origins = [
     _cors_origin(),
+    "https://opply-ai.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
