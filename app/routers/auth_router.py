@@ -108,17 +108,21 @@ def google_login(token: str):
 
 @router.get("/google/callback")
 async def google_callback(code: str, state: str, session: Session = Depends(get_session)):
+    frontend_url = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+    if frontend_url.endswith("/"):
+        frontend_url = frontend_url[:-1]
+    
     try:
         payload = jwt.decode(state, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = int(payload.get("sub"))
     except Exception:
         from fastapi.responses import RedirectResponse
-        return RedirectResponse("http://localhost:5173/?error=invalid_state")
+        return RedirectResponse(f"{frontend_url}/?error=invalid_state")
         
     user = session.get(User, user_id)
     if not user:
         from fastapi.responses import RedirectResponse
-        return RedirectResponse("http://localhost:5173/?error=user_not_found")
+        return RedirectResponse(f"{frontend_url}/?error=user_not_found")
         
     client_id = os.getenv("GOOGLE_CLIENT_ID")
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -143,7 +147,7 @@ async def google_callback(code: str, state: str, session: Session = Depends(get_
             except:
                 pass
             from fastapi.responses import RedirectResponse
-            return RedirectResponse(f"http://localhost:5173/?error={error_type}")
+            return RedirectResponse(f"{frontend_url}/?error={error_type}")
             
         tokens = resp.json()
         
@@ -168,4 +172,4 @@ async def google_callback(code: str, state: str, session: Session = Depends(get_
     session.commit()
     
     from fastapi.responses import RedirectResponse
-    return RedirectResponse("http://localhost:5173/?oauth_success=1")
+    return RedirectResponse(f"{frontend_url}/?oauth_success=1")
