@@ -17,7 +17,18 @@ security = HTTPBearer()
 
 
 def _google_redirect_uri() -> str:
-    return os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/api/auth/google/callback")
+    # 1. Use explicit env var if set
+    env_uri = os.getenv("GOOGLE_REDIRECT_URI")
+    if env_uri:
+        return env_uri
+        
+    # 2. Try to build it from the FRONTEND_ORIGIN but pointing to the backend
+    # Actually, the safest is to fall back to the known Render URL if we are in production
+    if os.getenv("RENDER"):
+        # Replace this with your actual Render backend name if you want to hardcode a fallback
+        return "https://opply-ai-backend.onrender.com/api/auth/google/callback"
+        
+    return "http://localhost:8000/api/auth/google/callback"
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), session: Session = Depends(get_session)) -> User:
     token = credentials.credentials
