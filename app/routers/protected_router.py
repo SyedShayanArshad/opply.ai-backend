@@ -284,27 +284,37 @@ async def analyze_manual(req: ManualAnalyzeRequest, user: User = Depends(get_cur
                     f"*Next Steps:*\n- {steps_text}\n\n"
                     f"📱 Check your Opply AI dashboard for full details!"
                 )
-                logger.info("Sending WhatsApp alert to %s from manual analysis", user.email)
-                success, sid, error_code = send_whatsapp_alert(user.phone_number, msg)
-                
-                if success:
-                    await manager.send_personal_message({
-                        "type": "whatsapp_status",
-                        "status": "success",
-                        "message": f"WhatsApp notification sent for: {(em.subject or '')[:30]}..."
-                    }, user.id)
-                elif error_code == "limit_exceeded":
-                    await manager.send_personal_message({
-                        "type": "whatsapp_status",
-                        "status": "warning",
-                        "message": "WhatsApp limit reached (Twilio Sandbox). You will still see the update here on your dashboard."
-                    }, user.id)
-                else:
+                logger.info("Attempting WhatsApp alert for %s (Manual: %s)", user.email, em.subject)
+                try:
+                    success, sid, error_code = send_whatsapp_alert(user.phone_number, msg)
+                    
+                    if success:
+                        await manager.send_personal_message({
+                            "type": "whatsapp_status",
+                            "status": "success",
+                            "message": f"WhatsApp notification successfully sent for: {(em.subject or '')[:30]}..."
+                        }, user.id)
+                    elif error_code == "limit_exceeded":
+                        await manager.send_personal_message({
+                            "type": "whatsapp_status",
+                            "status": "warning",
+                            "message": "Twilio Sandbox limit reached. WhatsApp notification could not be delivered, but you can find all details in your dashboard."
+                        }, user.id)
+                    else:
+                        await manager.send_personal_message({
+                            "type": "whatsapp_status",
+                            "status": "error",
+                            "message": f"WhatsApp delivery encountered an issue: {error_code or 'Unknown error'}. Please verify your notification settings."
+                        }, user.id)
+                except Exception as we:
+                    logger.error("Error in WhatsApp integration (Manual): %s", we)
                     await manager.send_personal_message({
                         "type": "whatsapp_status",
                         "status": "error",
-                        "message": "WhatsApp delivery failed. Please check your phone number and connection."
+                        "message": "WhatsApp service is temporarily unavailable. Please check your settings."
                     }, user.id)
+            elif user.whatsapp_enabled:
+                logger.warning("WhatsApp enabled for %s but no phone number found.", user.email)
 
         session.add(record)
         session.commit()
