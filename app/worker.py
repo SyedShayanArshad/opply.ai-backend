@@ -339,7 +339,26 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
                     f"📱 Check your Opply AI dashboard for full details!"
                 )
                 logger.info("Sending WhatsApp alert to %s for email: %s", user.email, email_input.subject)
-                send_whatsapp_alert(user.phone_number, msg)
+                success, sid, error_code = send_whatsapp_alert(user.phone_number, msg)
+                
+                if success:
+                    await manager.send_personal_message({
+                        "type": "whatsapp_status",
+                        "status": "success",
+                        "message": f"WhatsApp notification sent for: {email_input.subject[:30]}..."
+                    }, user.id)
+                elif error_code == "limit_exceeded":
+                    await manager.send_personal_message({
+                        "type": "whatsapp_status",
+                        "status": "warning",
+                        "message": "WhatsApp limit reached (Twilio Sandbox). You will still see the update here on your dashboard."
+                    }, user.id)
+                else:
+                    await manager.send_personal_message({
+                        "type": "whatsapp_status",
+                        "status": "error",
+                        "message": "WhatsApp delivery failed. Please check your phone number and connection."
+                    }, user.id)
 
         session.add(record)
         session.commit()

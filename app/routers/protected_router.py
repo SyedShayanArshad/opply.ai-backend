@@ -285,7 +285,26 @@ async def analyze_manual(req: ManualAnalyzeRequest, user: User = Depends(get_cur
                     f"📱 Check your Opply AI dashboard for full details!"
                 )
                 logger.info("Sending WhatsApp alert to %s from manual analysis", user.email)
-                send_whatsapp_alert(user.phone_number, msg)
+                success, sid, error_code = send_whatsapp_alert(user.phone_number, msg)
+                
+                if success:
+                    await manager.send_personal_message({
+                        "type": "whatsapp_status",
+                        "status": "success",
+                        "message": f"WhatsApp notification sent for: {(em.subject or '')[:30]}..."
+                    }, user.id)
+                elif error_code == "limit_exceeded":
+                    await manager.send_personal_message({
+                        "type": "whatsapp_status",
+                        "status": "warning",
+                        "message": "WhatsApp limit reached (Twilio Sandbox). You will still see the update here on your dashboard."
+                    }, user.id)
+                else:
+                    await manager.send_personal_message({
+                        "type": "whatsapp_status",
+                        "status": "error",
+                        "message": "WhatsApp delivery failed. Please check your phone number and connection."
+                    }, user.id)
 
         session.add(record)
         session.commit()
