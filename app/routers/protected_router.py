@@ -134,7 +134,6 @@ def get_dashboard(user: User = Depends(get_current_user), session: Session = Dep
             links=ex_data.get("links", []) if isinstance(ex_data, dict) else [],
             source=getattr(r, "source", "manual"),
             created_at=r.created_at.isoformat() if r.created_at else None,
-            email_date=r.email_date.isoformat() if getattr(r, "email_date", None) else None,
         )
         email_records.append(er)
 

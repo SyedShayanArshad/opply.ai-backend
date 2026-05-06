@@ -8,7 +8,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
-import dateparser
 from sqlmodel import Session, select
 
 from .db import engine
@@ -64,18 +63,6 @@ def _gmail_headers_to_map(headers: list[dict[str, str]] | None) -> dict[str, str
         if name and value:
             out[name] = value
     return out
-
-
-def _parse_gmail_date(date_str: str | None) -> datetime | None:
-    if not date_str:
-        return None
-    try:
-        dt = dateparser.parse(date_str)
-        if dt and not dt.tzinfo:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt
-    except Exception:
-        return None
 
 
 def _db_profile_to_pydantic(db_profile: DBStudentProfile) -> StudentProfile:
@@ -215,7 +202,6 @@ async def fetch_unseen_emails(user: User, session: Session, last_sync_date: date
                 emails_fetched.append(
                     {
                         "message_id": headers_map.get("message-id", message_id),
-                        "date": _parse_gmail_date(headers_map.get("date")),
                         "parsed": {
                             "subject": headers_map.get("subject", "No Subject"),
                             "sender": headers_map.get("from", "Unknown Sender"),
@@ -298,7 +284,6 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
             record = DBEmailRecord(
                 user_id=user.id,
                 email_id=message_id,
-                email_date=em.get("date"),
                 subject=email_input.subject or "",
                 sender=email_input.sender or "",
                 classification="not important",
@@ -327,7 +312,6 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
             record = DBEmailRecord(
                 user_id=user.id,
                 email_id=message_id,
-                email_date=em.get("date"),
                 subject=email_input.subject or "",
                 sender=email_input.sender or "",
                 classification="important",
