@@ -339,7 +339,13 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
                     f"📱 Check your Opply AI dashboard for full details!"
                 )
                 logger.info("Sending WhatsApp alert to %s for email: %s", user.email, email_input.subject)
-                send_whatsapp_alert(user.phone_number, msg)
+                wa_result = send_whatsapp_alert(user.phone_number, msg)
+                await manager.send_personal_message({
+                    "type": "whatsapp_status",
+                    "success": wa_result["success"],
+                    "error_reason": wa_result["error_reason"],
+                    "subject": email_input.subject,
+                }, user.id)
 
         session.add(record)
         session.commit()

@@ -133,7 +133,12 @@ def get_dashboard(user: User = Depends(get_current_user), session: Session = Dep
             detailed_actions=json.loads(r.detailed_actions_json) if r.detailed_actions_json else [],
             links=ex_data.get("links", []) if isinstance(ex_data, dict) else [],
             source=getattr(r, "source", "manual"),
-            created_at=r.created_at.isoformat() if r.created_at else None,
+            created_at=(
+                r.created_at.strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z'
+                if r.created_at and r.created_at.tzinfo is None
+                else r.created_at.isoformat().replace('+00:00', 'Z')
+                if r.created_at else None
+            ),
         )
         email_records.append(er)
 
@@ -285,7 +290,13 @@ async def analyze_manual(req: ManualAnalyzeRequest, user: User = Depends(get_cur
                     f"📱 Check your Opply AI dashboard for full details!"
                 )
                 logger.info("Sending WhatsApp alert to %s from manual analysis", user.email)
-                send_whatsapp_alert(user.phone_number, msg)
+                wa_result = send_whatsapp_alert(user.phone_number, msg)
+                await manager.send_personal_message({
+                    "type": "whatsapp_status",
+                    "success": wa_result["success"],
+                    "error_reason": wa_result["error_reason"],
+                    "subject": em.subject,
+                }, user.id)
 
         session.add(record)
         session.commit()
