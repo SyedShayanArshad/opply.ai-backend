@@ -82,6 +82,12 @@ class OpportunityExtraction(BaseModel):
         default_factory=dict,
         description="Map field -> short supporting quotes from the email",
     )
+    fit_score: float = Field(
+        default=50.0, ge=0.0, le=100.0, description="LLM-calculated fit score 0-100"
+    )
+    fit_reasons: list[str] = Field(
+        default_factory=list, description="Specific semantic reasons for the fit score"
+    )
     extraction_warnings: list[str] = Field(default_factory=list)
 
 

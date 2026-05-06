@@ -18,6 +18,7 @@ from .models import EmailInput, StudentProfile, FinancialNeedLevel, LocationPref
 from .profile_summary import build_profile_summary
 from .record_explanation import build_record_explanation
 from .score import score_opportunity
+from .rag_engine import build_profile_vectorstore, retrieve_relevant_context
 from .utils import now_utc
 from .ws_manager import manager
 from .twilio_service import send_whatsapp_alert
@@ -243,6 +244,17 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
     profile_summary = db_profile.profile_summary or await build_profile_summary(profile, _llm)
     base = now_utc()
 
+    # ── Build per-user RAG profile vector store (cached if profile unchanged) ──
+    rag_ready = False
+    try:
+        rag_ready = await asyncio.to_thread(build_profile_vectorstore, profile, user.id)
+        if rag_ready:
+            logger.info("RAG profile store ready for user %s", user.email)
+        else:
+            logger.info("RAG store unavailable for user %s — using plain profile context", user.email)
+    except Exception as rag_err:
+        logger.warning("RAG store build failed for user %s: %s", user.email, rag_err)
+
     for em in new_emails:
         message_id = em["message_id"]
 
@@ -262,14 +274,27 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
 
         await manager.send_personal_message({"type": "progress", "message": f"Analyzing: {email_input.subject[:40]}..."}, user.id)
 
-        # Run extraction
+        # ── Retrieve RAG context for this specific email ──────────────────────
+        email_query_text = f"{email_input.subject or ''} {email_input.body or ''}"[:1200]
+        rag_context = ""
+        if rag_ready:
+            try:
+                rag_context = await asyncio.to_thread(
+                    retrieve_relevant_context, email_query_text, user.id, 3
+                )
+            except Exception as rc_err:
+                logger.warning("RAG retrieval failed for email %s: %s", message_id, rc_err)
+
+        # ── Run RAG-augmented extraction ──────────────────────────────────────
         ex = await extract_opportunity(
             email_input,
             profile,
             base=base,
             llm=_llm,
             notice_text=None,
-            profile_summary=profile_summary
+            profile_summary=profile_summary,
+            rag_context=rag_context,
+            user_id=user.id,
         )
 
         if not ex.is_opportunity:
@@ -280,6 +305,7 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
                 ex=ex,
                 llm=_llm,
                 score=None,
+                rag_context=rag_context,
             )
             record = DBEmailRecord(
                 user_id=user.id,
@@ -292,7 +318,7 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
                 source="gmail",
             )
         else:
-            score, reasons = score_opportunity(profile, ex, base=base)
+            score, reasons = score_opportunity(profile, ex, base=base, rag_context=rag_context)
             explanation = await build_record_explanation(
                 classification="important",
                 profile_summary=profile_summary,
@@ -300,6 +326,7 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
                 ex=ex,
                 llm=_llm,
                 score=score,
+                rag_context=rag_context,
             )
 
             checklist = []

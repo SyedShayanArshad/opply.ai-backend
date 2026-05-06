@@ -1,28 +1,51 @@
+"""
+extract.py — Pure RAG-powered opportunity extraction & scoring
+
+This module is now 100% RAG-driven. All manual heuristics, regex, and keyword
+matching (rapidfuzz) have been removed.
+
+The extraction process:
+1. Receives semantically relevant profile chunks via FAISS (rag_context).
+2. Uses a single LangChain/Mistral call to:
+   a. Extract structured opportunity fields.
+   b. Calculate a semantic 'fit_score' (0-100) based on the retrieved context.
+   c. Generate detailed 'fit_reasons'.
+
+This eliminates the 'Hybrid' model in favor of a full 'AI Reasoning' model.
+"""
 from __future__ import annotations
 
-import re
 from datetime import datetime
 from typing import Any
 
-from rapidfuzz import fuzz
-
 from .mistral_client import MistralLLM
-from .models import EmailInput, OpportunityExtraction, OpportunityType, StudentProfile
+from .models import EmailInput, OpportunityExtraction, StudentProfile
 from .utils import extract_urls, parse_deadline_to_datetime, safe_str
 
 
-_SYSTEM = """You are an information extraction engine for university opportunity emails.
-You must:
-- Decide if the email contains a real opportunity (scholarship/internship/competition/admissions/fellowship/event).
-- If yes, extract structured fields.
-- Provide a detailed summary of what the email is about in the 'summary' field.
-- Provide detailed, step-by-step required actions in the 'next_steps' field.
-- Provide evidence quotes per field (short exact snippets).
-- If a field is missing, set it to null or empty.
-Return strict JSON only.
+# ── Prompt templates ───────────────────────────────────────────────────────────
+
+_SYSTEM = """\
+You are an expert student opportunity advisor and information extraction engine for Opply AI.
+
+Your Goal:
+1. Identify if the email contains a genuine student opportunity (scholarship, internship, competition, admissions, fellowship, or event).
+2. Extract all relevant details into structured JSON.
+3. Perform a SEMANTIC FIT ANALYSIS: Based on the provided 'RELEVANT STUDENT PROFILE CONTEXT', calculate a 'fit_score' (0 to 100) and provide 2-3 'fit_reasons'.
+
+Fit Scoring Rubric:
+- 80-100: Matches student's specific skills, interests, AND preferred opportunity types.
+- 50-79: Matches some interests or skills, but might be a different opportunity type or slightly different field.
+- 0-49: Low relevance to the student's background or specifically excluded by their preferences.
+
+Rules:
+- If it is NOT an opportunity, set is_opportunity=false.
+- Set missing fields to null or empty arrays.
+- Return ONLY strict JSON. No markdown.
 """
 
-_SCHEMA_HINT = """{
+_SCHEMA_HINT = """\
+{
   "is_opportunity": true,
   "opportunity_type": "scholarship|internship|competition|admissions|fellowship|event|other|null",
   "title": "string|null",
@@ -37,7 +60,9 @@ _SCHEMA_HINT = """{
   "next_steps": ["string"],
   "requirements": ["string"],
   "benefits": ["string"],
-  "evidence": {"field": ["quote"]}
+  "evidence": {"field": ["quote"]},
+  "fit_score": 85.0,
+  "fit_reasons": ["Matches your interest in Machine Learning", "Aligned with your BS Computer Science degree"]
 }"""
 
 
@@ -45,7 +70,7 @@ def _email_to_text(email: EmailInput) -> str:
     raw = safe_str(email.raw)
     if raw:
         return raw
-    parts = []
+    parts: list[str] = []
     if email.subject:
         parts.append(f"Subject: {email.subject}")
     if email.sender:
@@ -53,93 +78,7 @@ def _email_to_text(email: EmailInput) -> str:
     if email.received_at:
         parts.append(f"Date: {email.received_at.isoformat()}")
     parts.append(safe_str(email.body))
-    return "\n".join([p for p in parts if p])
-
-
-def _heuristic_is_opportunity(text: str) -> bool:
-    keywords = [
-        "scholarship",
-        "internship",
-        "apply",
-        "application",
-        "deadline",
-        "fellowship",
-        "competition",
-        "call for",
-        "admission",
-        "fully funded",
-        "stipend",
-    ]
-    t = text.lower()
-    hits = sum(1 for k in keywords if k in t)
-    if hits >= 2:
-        return True
-    if "unsubscribe" in t and hits == 0:
-        return False
-    return hits >= 1 and len(text) > 200
-
-
-def _guess_type(text: str) -> OpportunityType:
-    t = text.lower()
-    if "scholarship" in t:
-        return OpportunityType.scholarship
-    if "internship" in t:
-        return OpportunityType.internship
-    if "competition" in t or "challenge" in t or "hackathon" in t:
-        return OpportunityType.competition
-    if "admission" in t or "admissions" in t:
-        return OpportunityType.admissions
-    if "fellowship" in t:
-        return OpportunityType.fellowship
-    if "workshop" in t or "webinar" in t or "event" in t:
-        return OpportunityType.event
-    return OpportunityType.other
-
-
-_DEADLINE_RE = re.compile(
-    r"(?:deadline|last date|apply by)\s*[:\-]?\s*(.+)", re.IGNORECASE
-)
-
-
-def _heuristic_extract(email: EmailInput, *, base: datetime) -> OpportunityExtraction:
-    text = _email_to_text(email)
-    urls = extract_urls(text)
-
-    deadline_text = None
-    m = _DEADLINE_RE.search(text)
-    if m:
-        deadline_text = m.group(1).strip()[:120]
-
-    op_type = _guess_type(text)
-    is_opp = _heuristic_is_opportunity(text)
-
-    extraction = OpportunityExtraction(
-        is_opportunity=is_opp,
-        opportunity_type=op_type if is_opp else None,
-        title=email.subject or None,
-        organization=None,
-        summary="A generic opportunity extracted heuristically (LLM unavailable).",
-        deadline_text=deadline_text,
-        location=None,
-        eligibility=[],
-        required_documents=[],
-        links=urls,
-        contact=None,
-        next_steps=["Open the link and confirm eligibility", "Prepare required documents"],
-        requirements=[],
-        benefits=[],
-        evidence={},
-        extraction_warnings=["Heuristic extraction used (no Mistral API key configured)"]
-        if not is_opp
-        else ["Heuristic extraction used (no Mistral API key configured)"]
-    )
-
-    if deadline_text:
-        dt = parse_deadline_to_datetime(deadline_text, base=base)
-        if dt:
-            extraction.deadline_iso = dt.isoformat()
-
-    return extraction
+    return "\n".join(p for p in parts if p)
 
 
 async def extract_opportunity(
@@ -150,63 +89,58 @@ async def extract_opportunity(
     llm: MistralLLM,
     notice_text: str | None = None,
     profile_summary: str | None = None,
+    rag_context: str = "",
+    user_id: int | None = None,
 ) -> OpportunityExtraction:
+    """
+    100% RAG-based extraction and fit analysis.
+    Manual heuristics have been completely removed.
+    """
     text = _email_to_text(email)
 
     if not llm.available:
-        return _heuristic_extract(email, base=base)
+        # If LLM is down, we return a negative extraction as we no longer support heuristic fallbacks
+        return OpportunityExtraction(
+            is_opportunity=False,
+            extraction_warnings=["LLM Unavailable: Semantic analysis could not be performed."]
+        )
 
-    user = (
-        "Extract opportunity fields from this email. "
-        "If it is NOT an opportunity, set is_opportunity=false and keep other fields null/empty.\n\n"
-        f"STUDENT CONTEXT (for disambiguation only; do not invent):\n"
-        f"- degree_program: {profile.degree_program}\n"
-        f"- semester: {profile.semester}\n"
-        f"- cgpa: {profile.cgpa}\n"
-        f"- profile_summary: {safe_str(profile_summary) if profile_summary else ''}\n\n"
-        f"EMAIL TEXT:\n{text}\n\n"
-        f"OPTIONAL NOTICE TEXT (if relevant):\n{safe_str(notice_text) if notice_text else ''}"
+    # ── Context Construction ──────────────────────────────────────────────────
+    # We use RAG context if available, otherwise fall back to the profile summary
+    context_to_use = rag_context.strip() or profile_summary or "No student profile context available."
+
+    user_prompt = (
+        "Analyze this email and the student context below.\n\n"
+        "RELEVANT STUDENT CONTEXT:\n"
+        f"{context_to_use}\n\n"
+        "EMAIL TEXT:\n"
+        f"{text}\n\n"
+        f"OPTIONAL NOTICE TEXT:\n"
+        f"{safe_str(notice_text) if notice_text else '(none)'}"
     )
 
-    data: dict[str, Any] = {}
+    # ── LLM Extraction & Scoring ──────────────────────────────────────────────
     try:
-        data = await llm.json_extract(system=_SYSTEM, user=user, schema_hint=_SCHEMA_HINT)
-    except Exception:
-        # fall back
-        return _heuristic_extract(email, base=base)
-
-    # Coerce/clean
-    try:
+        data = await llm.json_extract(
+            system=_SYSTEM, user=user_prompt, schema_hint=_SCHEMA_HINT
+        )
         extraction = OpportunityExtraction.model_validate(data)
-    except Exception:
-        return _heuristic_extract(email, base=base)
+    except Exception as exc:
+        import logging
+        logging.getLogger("app.extract").error("Pure RAG extraction failed: %s", exc)
+        return OpportunityExtraction(
+            is_opportunity=False,
+            extraction_warnings=[f"Analysis failed: {str(exc)}"]
+        )
 
-    # Enrich: URLs if missing
+    # ── Semantic Post-Processing (Dates & Links only, no heuristics) ──────────
     if not extraction.links:
         extraction.links = extract_urls(text)
 
-    # Normalize type
-    if extraction.is_opportunity and not extraction.opportunity_type:
-        extraction.opportunity_type = _guess_type(text)
-
-    # Parse deadline
     deadline_text = safe_str(extraction.deadline_text)
     if deadline_text and not extraction.deadline_iso:
         dt = parse_deadline_to_datetime(deadline_text, base=base)
         if dt:
             extraction.deadline_iso = dt.isoformat()
-
-    # If model says not opportunity but subject strongly matches, override conservatively
-    subj = safe_str(email.subject).lower()
-    if not extraction.is_opportunity and subj:
-        if max(
-            fuzz.partial_ratio(subj, "scholarship"),
-            fuzz.partial_ratio(subj, "internship"),
-            fuzz.partial_ratio(subj, "fellowship"),
-        ) > 85:
-            extraction.is_opportunity = True
-            extraction.extraction_warnings.append("Overrode is_opportunity via subject keyword")
-            if not extraction.opportunity_type:
-                extraction.opportunity_type = _guess_type(text)
 
     return extraction

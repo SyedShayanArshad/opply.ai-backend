@@ -18,6 +18,8 @@ from pydantic import BaseModel
 from typing import Optional
 from ..ws_manager import manager
 from ..twilio_service import send_whatsapp_alert
+from ..rag_engine import clear_user_store, build_profile_vectorstore, retrieve_relevant_context
+import asyncio
 
 logger = logging.getLogger("app.protected")
 
@@ -104,6 +106,9 @@ async def update_profile(profile: StudentProfile, user: User = Depends(get_curre
     db_profile.location_text = profile.location_text
     db_profile.past_experience = profile.past_experience
     db_profile.profile_summary = await build_profile_summary(profile, _llm)
+
+    # Clear RAG store so it's rebuilt with the new profile data in the next sync
+    clear_user_store(user.id)
 
     session.commit()
     return {"status": "ok", "profile_summary": db_profile.profile_summary}
@@ -200,8 +205,16 @@ async def analyze_manual(req: ManualAnalyzeRequest, user: User = Depends(get_cur
     profile = _db_profile_to_pydantic(db_profile)
     profile_summary = db_profile.profile_summary or await build_profile_summary(profile, _llm)
     base = now_utc()
-    processed = 0
 
+    # ── Build per-user RAG profile vector store (cached if profile unchanged) ──
+    rag_ready = False
+    try:
+        # Run synchronous FAISS build in a thread to keep the event loop free
+        rag_ready = await asyncio.to_thread(build_profile_vectorstore, profile, user.id)
+    except Exception as rag_err:
+        logger.warning("RAG store build failed for manual analysis (user %d): %s", user.id, rag_err)
+
+    processed = 0
     await manager.send_personal_message({"type": "progress", "message": f"Manual analysis: Started ({len(req.emails)} emails)..."}, user.id)
 
     for em in req.emails:
@@ -214,13 +227,26 @@ async def analyze_manual(req: ManualAnalyzeRequest, user: User = Depends(get_cur
 
         await manager.send_personal_message({"type": "progress", "message": f"Analyzing: {(em.subject or 'email')[:40]}..."}, user.id)
 
+        # ── Retrieve RAG context for this specific email ──────────────────────
+        email_query_text = f"{em.subject or ''} {em.body or ''}"[:1200]
+        rag_context = ""
+        if rag_ready:
+            try:
+                rag_context = await asyncio.to_thread(
+                    retrieve_relevant_context, email_query_text, user.id, 3
+                )
+            except Exception as rc_err:
+                logger.warning("RAG retrieval failed for manual email: %s", rc_err)
+
         ex = await extract_opportunity(
             em,
             profile,
             base=base,
             llm=_llm,
             notice_text=None,
-            profile_summary=profile_summary
+            profile_summary=profile_summary,
+            rag_context=rag_context,
+            user_id=user.id,
         )
 
         if not ex.is_opportunity:
@@ -231,6 +257,7 @@ async def analyze_manual(req: ManualAnalyzeRequest, user: User = Depends(get_cur
                 ex=ex,
                 llm=_llm,
                 score=None,
+                rag_context=rag_context,
             )
             record = DBEmailRecord(
                 user_id=user.id,
@@ -243,7 +270,7 @@ async def analyze_manual(req: ManualAnalyzeRequest, user: User = Depends(get_cur
                 source="manual",
             )
         else:
-            score, reasons = score_opportunity(profile, ex, base=base)
+            score, reasons = score_opportunity(profile, ex, base=base, rag_context=rag_context)
             explanation = await build_record_explanation(
                 classification="important",
                 profile_summary=profile_summary,
@@ -251,6 +278,7 @@ async def analyze_manual(req: ManualAnalyzeRequest, user: User = Depends(get_cur
                 ex=ex,
                 llm=_llm,
                 score=score,
+                rag_context=rag_context,
             )
 
             checklist = []

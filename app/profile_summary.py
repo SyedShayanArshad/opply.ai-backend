@@ -1,36 +1,53 @@
+"""
+profile_summary.py — LangChain-powered student profile summariser
+
+Generates a concise professional summary of the student profile that is
+stored in DB and reused across all email processing cycles.
+Uses LangChain's ChatPromptTemplate chain via MistralLLM wrapper.
+"""
 from __future__ import annotations
 
 from .mistral_client import MistralLLM
 from .models import StudentProfile
-from .utils import safe_str
 
 
-def fallback_profile_summary(profile: StudentProfile) -> str:
+def _fallback_summary(profile: StudentProfile) -> str:
+    """Plain-text summary used when LLM is unavailable."""
     skills = ", ".join(profile.skills[:6]) if profile.skills else "not specified"
     interests = ", ".join(profile.interests[:6]) if profile.interests else "not specified"
-    preferred = ", ".join([p.value for p in profile.preferred_opportunity_types[:6]]) if profile.preferred_opportunity_types else "not specified"
-    location = profile.location_text or profile.location_preference.value
+    preferred = (
+        ", ".join(p.value for p in profile.preferred_opportunity_types[:6])
+        if profile.preferred_opportunity_types
+        else "not specified"
+    )
+    loc = profile.location_text or profile.location_preference.value
     exp = profile.past_experience or "not specified"
     return (
-        f"Student is in {profile.degree_program}, semester {profile.semester}, with CGPA {profile.cgpa:.2f}. "
-        f"Skills: {skills}. Interests: {interests}. Preferred opportunity types: {preferred}. "
-        f"Financial need: {profile.financial_need.value}. Location preference: {location}. "
-        f"Past experience: {exp}."
+        f"Student is in {profile.degree_program}, semester {profile.semester}, "
+        f"CGPA {profile.cgpa:.2f}. Skills: {skills}. Interests: {interests}. "
+        f"Preferred opportunity types: {preferred}. "
+        f"Financial need: {profile.financial_need.value}. "
+        f"Location preference: {loc}. Past experience: {exp}."
     )
 
 
 async def build_profile_summary(profile: StudentProfile, llm: MistralLLM) -> str:
+    """
+    Generate a 90-140 word professional student profile summary via LangChain.
+    Falls back to plain-text summary if LLM is unavailable.
+    """
     if not llm.available:
-        return fallback_profile_summary(profile)
+        return _fallback_summary(profile)
 
     system = (
-        "You are a profile writer for student opportunity matching. "
-        "Return strict JSON only. Do not add markdown."
+        "You are a professional profile writer for a student opportunity-matching platform. "
+        "Return strict JSON only. Do not add markdown or extra commentary."
     )
     user = (
-        "Create a concise but detailed student profile summary (90-140 words) from this student data. "
-        "Write in third person, neutral professional tone. Focus on study background, strengths, goals, "
-        "preferred opportunities, readiness signals, and anything that helps classify opportunities.\n\n"
+        "Write a concise but detailed student profile summary (90-140 words) from the data below.\n"
+        "Write in third person, neutral professional tone.\n"
+        "Focus on: study background, key strengths, career goals, preferred opportunities, "
+        "financial situation, and anything that helps classify relevant emails.\n\n"
         f"degree_program: {profile.degree_program}\n"
         f"semester: {profile.semester}\n"
         f"cgpa: {profile.cgpa}\n"
@@ -52,4 +69,4 @@ async def build_profile_summary(profile: StudentProfile, llm: MistralLLM) -> str
     except Exception:
         pass
 
-    return fallback_profile_summary(profile)
+    return _fallback_summary(profile)
