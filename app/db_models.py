@@ -38,6 +38,7 @@ class DBEmailRecord(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", index=True)
     email_id: str = Field(index=True)  # Message identifier from source mailbox to prevent duplicates
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    email_date: Optional[datetime] = None
     subject: str = ""
     sender: str = ""
     classification: str = ""  # "important" or "not important"

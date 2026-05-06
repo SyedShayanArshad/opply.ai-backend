@@ -117,6 +117,7 @@ class EmailRecord(BaseModel):
     links: list[str] = Field(default_factory=list)
     source: str = "manual"
     created_at: str | None = None
+    email_date: str | None = None
 
 
 class AnalyzeRequest(BaseModel):
