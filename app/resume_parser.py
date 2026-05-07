@@ -21,18 +21,20 @@ Extract the student's academic and professional information from the provided re
 If a field is not found in the resume, leave it as null, empty string, or empty array according to the type.
 
 Rules:
-- Do NOT make up information.
+- Do NOT make up information or extract irrelevant boilerplate text.
+- If the resume does NOT contain work or project experience, set past_experience to null.
+- Do not extract hobbies or personal statements as past_experience. Only extract real work, internships, or academic projects.
 - Return ONLY strict JSON. No markdown.
 """
 
 _SCHEMA_HINT = """\
 {
-  "degree_program": "string|null",
+  "degree_program": "string|null (e.g. BS Computer Science)",
   "semester": "integer|null (guess based on graduation year if possible, else 1)",
   "cgpa": "float|null",
-  "skills": ["string"],
-  "interests": ["string"],
-  "past_experience": "string|null (A summarized paragraph of their work/project experience)"
+  "skills": ["string (e.g. Python, React, Data Analysis)"],
+  "interests": ["string (e.g. Machine Learning, Open Source)"],
+  "past_experience": "string|null (A summarized paragraph of their work/project experience. Extract ONLY actual job/internship/project history. If none, return null.)"
 }"""
 
 
