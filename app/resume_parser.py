@@ -24,6 +24,7 @@ Rules:
 - Do NOT make up information or extract irrelevant boilerplate text.
 - If the resume does NOT contain work or project experience, set past_experience to null.
 - Do not extract hobbies or personal statements as past_experience. Only extract real work, internships, or academic projects.
+- For past_experience, do NOT just copy-paste text. Synthesize and write a cohesive, well-formatted paragraph summarizing their key achievements, roles, and technical contributions in a professional tone.
 - Return ONLY strict JSON. No markdown.
 """
 
@@ -34,7 +35,7 @@ _SCHEMA_HINT = """\
   "cgpa": "float|null",
   "skills": ["string (e.g. Python, React, Data Analysis)"],
   "interests": ["string (e.g. Machine Learning, Open Source)"],
-  "past_experience": "string|null (A summarized paragraph of their work/project experience. Extract ONLY actual job/internship/project history. If none, return null.)"
+  "past_experience": "string|null (A cohesive, professionally written paragraph summarizing their real work, internships, and key project history. Do NOT copy-paste bullet points. Synthesize into a narrative paragraph. If none, return null.)"
 }"""
 
 

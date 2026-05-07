@@ -45,7 +45,7 @@ async def build_profile_summary(profile: StudentProfile, llm: MistralLLM) -> str
     )
     user = (
         "Write a concise but detailed student profile summary (90-140 words) from the data below.\n"
-        "Write in third person, neutral professional tone.\n"
+        "Write in third person, neutral professional tone. **Crucially, output the text as a single, well-structured paragraph.** Do not use bullet points or multiple paragraphs.\n"
         "Focus on: study background, key strengths, career goals, preferred opportunities, "
         "financial situation, and anything that helps classify relevant emails.\n\n"
         f"degree_program: {profile.degree_program}\n"
