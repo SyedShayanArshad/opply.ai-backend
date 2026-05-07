@@ -39,6 +39,7 @@ def _profile_hash(profile) -> str:
         profile.location_text or "",
         profile.past_experience or "",
         profile.profile_summary or "",
+        profile.resume_text or "",
     )
     return hashlib.md5(str(key).encode()).hexdigest()
 
@@ -81,6 +82,9 @@ def _profile_to_chunks(profile) -> list[str]:
 
     if profile.profile_summary:
         chunks.append(f"Overall student summary: {profile.profile_summary}")
+
+    if getattr(profile, "resume_text", None):
+        chunks.append(f"Resume extracted text: {profile.resume_text[:2000]}") # Only take first 2000 chars to avoid huge chunks
 
     return [c.strip() for c in chunks if c.strip()]
 

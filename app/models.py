@@ -48,6 +48,20 @@ class StudentProfile(BaseModel):
         default=None,
         description="Optional student introduction/summary used as additional context for extraction and ranking.",
     )
+    resume_text: str | None = Field(
+        default=None,
+        description="Optional raw text extracted from the student's uploaded resume.",
+    )
+
+
+class ResumeParseResponse(BaseModel):
+    degree_program: str | None = None
+    semester: int | None = None
+    cgpa: float | None = None
+    skills: list[str] = Field(default_factory=list)
+    interests: list[str] = Field(default_factory=list)
+    past_experience: str | None = None
+    resume_text: str | None = None
 
 
 class EmailInput(BaseModel):

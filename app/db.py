@@ -56,6 +56,12 @@ def _run_migrations():
         if "source" not in email_columns:
             conn.execute(text("ALTER TABLE dbemailrecord ADD COLUMN source TEXT DEFAULT 'manual'"))
 
+        # Check DBStudentProfile table columns
+        profile_columns = [col["name"] for col in inspector.get_columns("dbstudentprofile")]
+        
+        if "resume_text" not in profile_columns:
+            conn.execute(text("ALTER TABLE dbstudentprofile ADD COLUMN resume_text TEXT"))
+
 def get_session():
     with Session(engine) as session:
         yield session

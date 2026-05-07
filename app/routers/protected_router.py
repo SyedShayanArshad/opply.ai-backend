@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import Session, select
 from ..db import get_session
 from ..db_models import User, DBStudentProfile, DBEmailRecord
@@ -11,6 +11,8 @@ from ..profile_summary import build_profile_summary
 from ..record_explanation import build_record_explanation
 from ..worker import process_user_emails
 from ..utils import now_utc
+from ..resume_parser import extract_text_from_file, parse_resume_with_llm
+from ..models import ResumeParseResponse
 import json
 import hashlib
 import logging
@@ -43,6 +45,7 @@ def _db_profile_to_pydantic(db_profile: DBStudentProfile) -> StudentProfile:
         location_text=db_profile.location_text,
         past_experience=db_profile.past_experience,
         profile_summary=db_profile.profile_summary,
+        resume_text=db_profile.resume_text,
     )
 
 
@@ -105,6 +108,8 @@ async def update_profile(profile: StudentProfile, user: User = Depends(get_curre
     db_profile.location_preference = profile.location_preference.value if hasattr(profile.location_preference, 'value') else profile.location_preference
     db_profile.location_text = profile.location_text
     db_profile.past_experience = profile.past_experience
+    if hasattr(profile, "resume_text") and profile.resume_text:
+        db_profile.resume_text = profile.resume_text
     db_profile.profile_summary = await build_profile_summary(profile, _llm)
 
     # Clear RAG store so it's rebuilt with the new profile data in the next sync
@@ -112,6 +117,36 @@ async def update_profile(profile: StudentProfile, user: User = Depends(get_curre
 
     session.commit()
     return {"status": "ok", "profile_summary": db_profile.profile_summary}
+
+
+@router.post("/resume/upload", response_model=ResumeParseResponse)
+async def upload_resume(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    # 1. Read file bytes
+    file_bytes = await file.read()
+    
+    # 2. Extract text
+    resume_text = extract_text_from_file(file_bytes, file.filename or "")
+    if not resume_text:
+        raise HTTPException(status_code=400, detail="Could not extract text from the provided file.")
+
+    # 3. Parse with LLM
+    parsed_data = await parse_resume_with_llm(resume_text, _llm)
+    
+    # 4. Construct response
+    resp = ResumeParseResponse(
+        degree_program=parsed_data.get("degree_program"),
+        semester=parsed_data.get("semester"),
+        cgpa=parsed_data.get("cgpa"),
+        skills=parsed_data.get("skills", []),
+        interests=parsed_data.get("interests", []),
+        past_experience=parsed_data.get("past_experience"),
+        resume_text=resume_text
+    )
+    return resp
 
 
 # ─── Dashboard ─────────────────────────────────────────────────────

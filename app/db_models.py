@@ -31,6 +31,7 @@ class DBStudentProfile(SQLModel, table=True):
     location_text: Optional[str] = None
     past_experience: Optional[str] = None
     profile_summary: Optional[str] = None
+    resume_text: Optional[str] = None
 
 
 class DBEmailRecord(SQLModel, table=True):
