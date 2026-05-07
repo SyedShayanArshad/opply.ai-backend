@@ -76,10 +76,8 @@ class MistralLLM:
         chain = prompt | structured_llm
 
         try:
-            response = await anyio.to_thread.run_sync(
-                lambda: chain.invoke(
-                    {"system": system, "user_input": user}
-                )
+            response = await chain.ainvoke(
+                {"system": system, "user_input": user}
             )
             return response
         except Exception as exc:
@@ -101,9 +99,7 @@ class MistralLLM:
         )
         chain = prompt | self._llm
 
-        response = await anyio.to_thread.run_sync(
-            lambda: chain.invoke({"system": system, "user_input": user})
-        )
+        response = await chain.ainvoke({"system": system, "user_input": user})
 
         return (
             response.content.strip()
