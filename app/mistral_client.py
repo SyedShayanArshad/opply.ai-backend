@@ -29,7 +29,7 @@ class MistralLLM:
     def __init__(self) -> None:
         _load_env()
         self.api_key = os.getenv("MISTRAL_API_KEY", "").strip()
-        self.model = os.getenv("MISTRAL_MODEL", "mistral-small-latest").strip()
+        self.model = "mistral-small-2506"
         self._llm = None
 
         if self.api_key:
