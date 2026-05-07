@@ -52,13 +52,13 @@ class MistralLLM:
 
     # ── Core method ────────────────────────────────────────────────────────────
 
-    async def json_extract(
-        self, *, system: str, user: str, schema_hint: str
-    ) -> dict[str, Any]:
+    async def structured_extract(
+        self, *, system: str, user: str, schema: type
+    ) -> Any:
         """
-        Send a chat completion and parse the response as JSON.
-        Uses LangChain's ChatPromptTemplate + ChatMistralAI chain.
-        Raises RuntimeError on failure so callers can fall back gracefully.
+        Send a chat completion and parse the response using LangChain's Tool Calling 
+        (with_structured_output). This guarantees the model outputs data matching 
+        the provided Pydantic schema natively.
         """
         if not self._llm:
             raise RuntimeError("LangChain Mistral client not configured.")
@@ -68,39 +68,23 @@ class MistralLLM:
         prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", "{system}"),
-                (
-                    "human",
-                    "{user_input}\n\nReturn ONLY valid JSON.\nSchema hint:\n{schema_hint}",
-                ),
+                ("human", "{user_input}"),
             ]
         )
-        chain = prompt | self._llm
-
-        response = await anyio.to_thread.run_sync(
-            lambda: chain.invoke(
-                {"system": system, "user_input": user, "schema_hint": schema_hint}
-            )
-        )
-
-        content: str = (
-            response.content if hasattr(response, "content") else str(response)
-        )
-        content = content.strip()
-
-        # Strip markdown code fences that some models add
-        if content.startswith("```json"):
-            content = content[7:]
-        elif content.startswith("```"):
-            content = content[3:]
-        if content.endswith("```"):
-            content = content[:-3]
-        content = content.strip()
+        
+        structured_llm = self._llm.with_structured_output(schema)
+        chain = prompt | structured_llm
 
         try:
-            return json.loads(content)
-        except json.JSONDecodeError as exc:
+            response = await anyio.to_thread.run_sync(
+                lambda: chain.invoke(
+                    {"system": system, "user_input": user}
+                )
+            )
+            return response
+        except Exception as exc:
             raise RuntimeError(
-                f"Model did not return valid JSON: {exc}\nRaw content: {content}"
+                f"Model failed to extract structured output: {exc}"
             ) from exc
 
     async def generate_text(self, *, system: str, user: str) -> str:

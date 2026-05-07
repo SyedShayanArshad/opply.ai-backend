@@ -7,7 +7,11 @@ Uses LangChain's ChatMistralAI chain via MistralLLM wrapper.
 """
 from __future__ import annotations
 
+from pydantic import BaseModel
 from .mistral_client import MistralLLM
+
+class ExplanationResponse(BaseModel):
+    explanation: str
 
 
 def _fallback_explanation(*, classification: str, ex, score_text: str) -> str:
@@ -54,7 +58,7 @@ async def build_record_explanation(
 
     system = (
         "You write clear, student-friendly email classification explanations for Opply AI. "
-        "Return strict JSON only. No markdown."
+        "Use the provided tool schema natively."
     )
 
     if classification == "important":
@@ -101,11 +105,11 @@ async def build_record_explanation(
         f"links: {getattr(ex, 'links', [])}\n"
         f"score: {score_text}\n"
     )
-    schema_hint = '{"explanation": "string"}'
-
     try:
-        out = await llm.json_extract(system=system, user=user, schema_hint=schema_hint)
-        explanation = str(out.get("explanation", "")).strip()
+        response = await llm.structured_extract(
+            system=system, user=user, schema=ExplanationResponse
+        )
+        explanation = response.explanation.strip()
         if explanation:
             return explanation
     except Exception:

@@ -8,7 +8,7 @@ Uses LangChain's ChatPromptTemplate chain via MistralLLM wrapper.
 from __future__ import annotations
 
 from .mistral_client import MistralLLM
-from .models import StudentProfile
+from .models import StudentProfile, ProfileSummaryResponse
 
 
 def _fallback_summary(profile: StudentProfile) -> str:
@@ -41,7 +41,7 @@ async def build_profile_summary(profile: StudentProfile, llm: MistralLLM) -> str
 
     system = (
         "You are a professional profile writer for a student opportunity-matching platform. "
-        "Return strict JSON only. Do not add markdown or extra commentary."
+        "Use the provided tool schema natively."
     )
     user = (
         "Write a concise but detailed student profile summary (90-140 words) from the data below.\n"
@@ -59,11 +59,11 @@ async def build_profile_summary(profile: StudentProfile, llm: MistralLLM) -> str
         f"location_text: {profile.location_text}\n"
         f"past_experience: {profile.past_experience}\n"
     )
-    schema_hint = '{"profile_summary": "string"}'
-
     try:
-        out = await llm.json_extract(system=system, user=user, schema_hint=schema_hint)
-        summary = str(out.get("profile_summary", "")).strip()
+        response = await llm.structured_extract(
+            system=system, user=user, schema=ProfileSummaryResponse
+        )
+        summary = response.profile_summary.strip()
         if summary:
             return summary
     except Exception:

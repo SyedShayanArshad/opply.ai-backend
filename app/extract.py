@@ -26,44 +26,22 @@ from .utils import extract_urls, parse_deadline_to_datetime, safe_str
 # ── Prompt templates ───────────────────────────────────────────────────────────
 
 _SYSTEM = """\
-You are an expert student opportunity advisor and information extraction engine for Opply AI.
+You are a Senior Student Opportunity Analyst AI for Opply.
 
 Your Goal:
 1. Identify if the email contains a genuine student opportunity (scholarship, internship, competition, admissions, fellowship, or event).
-2. Extract all relevant details into structured JSON.
-3. Perform a SEMANTIC FIT ANALYSIS: Based on the provided 'RELEVANT STUDENT PROFILE CONTEXT', calculate a 'fit_score' (0 to 100) and provide 2-3 'fit_reasons'.
+2. Extract all relevant details natively using the provided tool schema.
+3. Perform a rigorous SEMANTIC FIT ANALYSIS based on the provided 'RELEVANT STUDENT PROFILE CONTEXT'.
 
-Fit Scoring Rubric:
-- 80-100: Matches student's specific skills, interests, AND preferred opportunity types.
+Fit Scoring Instructions (0 to 100):
+- 80-100: Matches student's specific skills, interests, AND preferred opportunity types perfectly.
 - 50-79: Matches some interests or skills, but might be a different opportunity type or slightly different field.
-- 0-49: Low relevance to the student's background or specifically excluded by their preferences.
+- 0-49: Low relevance or specifically excluded by their preferences.
 
 Rules:
-- If it is NOT an opportunity, set is_opportunity=false.
-- Set missing fields to null or empty arrays.
-- Return ONLY strict JSON. No markdown.
+- If it is NOT an opportunity, set is_opportunity=false and skip other fields.
+- Do NOT hallucinate deadlines or links. Only extract what is present.
 """
-
-_SCHEMA_HINT = """\
-{
-  "is_opportunity": true,
-  "opportunity_type": "scholarship|internship|competition|admissions|fellowship|event|other|null",
-  "title": "string|null",
-  "organization": "string|null",
-  "summary": "string|null",
-  "deadline_text": "string|null",
-  "location": "string|null",
-  "eligibility": ["string"],
-  "required_documents": ["string"],
-  "links": ["https://..."],
-  "contact": "string|null",
-  "next_steps": ["string"],
-  "requirements": ["string"],
-  "benefits": ["string"],
-  "evidence": {"field": ["quote"]},
-  "fit_score": 85.0,
-  "fit_reasons": ["Matches your interest in Machine Learning", "Aligned with your BS Computer Science degree"]
-}"""
 
 
 def _email_to_text(email: EmailInput) -> str:
@@ -121,10 +99,10 @@ async def extract_opportunity(
 
     # ── LLM Extraction & Scoring ──────────────────────────────────────────────
     try:
-        data = await llm.json_extract(
-            system=_SYSTEM, user=user_prompt, schema_hint=_SCHEMA_HINT
+        extraction = await llm.structured_extract(
+            system=_SYSTEM, user=user_prompt, schema=OpportunityExtraction
         )
-        extraction = OpportunityExtraction.model_validate(data)
+
     except Exception as exc:
         import logging
         logging.getLogger("app.extract").error("Pure RAG extraction failed: %s", exc)

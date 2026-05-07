@@ -10,33 +10,21 @@ import logging
 from typing import Any
 
 from .mistral_client import MistralLLM
-from .models import StudentProfile
+from .models import StudentProfile, ResumeParseResponse
 
 logger = logging.getLogger("app.resume_parser")
 
 _SYSTEM = """\
-You are an expert student profile analyzer for Opply AI.
+You are an Expert Career Coach and Resume Parser AI for Opply.
 Your Goal:
-Extract the student's academic and professional information from the provided resume text and map it to the requested JSON schema.
-If a field is not found in the resume, leave it as null, empty string, or empty array according to the type.
+Extract the student's academic and professional information from the provided resume text natively using the tool schema.
 
 Rules:
 - Do NOT make up information or extract irrelevant boilerplate text.
 - If the resume does NOT contain work or project experience, set past_experience to null.
 - Do not extract hobbies or personal statements as past_experience. Only extract real work, internships, or academic projects.
 - For past_experience, do NOT just copy-paste text. Synthesize and write a cohesive, well-formatted paragraph summarizing their key achievements, roles, and technical contributions in a professional tone.
-- Return ONLY strict JSON. No markdown.
 """
-
-_SCHEMA_HINT = """\
-{
-  "degree_program": "string|null (e.g. BS Computer Science)",
-  "semester": "integer|null (guess based on graduation year if possible, else 1)",
-  "cgpa": "float|null",
-  "skills": ["string (e.g. Python, React, Data Analysis)"],
-  "interests": ["string (e.g. Machine Learning, Open Source)"],
-  "past_experience": "string|null (A cohesive, professionally written paragraph summarizing their real work, internships, and key project history. Do NOT copy-paste bullet points. Synthesize into a narrative paragraph. If none, return null.)"
-}"""
 
 
 def extract_text_from_file(file_bytes: bytes, filename: str) -> str:
@@ -77,10 +65,10 @@ async def parse_resume_with_llm(resume_text: str, llm: MistralLLM) -> dict[str, 
     user_prompt = f"Extract profile fields from this resume:\n\n{resume_text[:4000]}"
     
     try:
-        data = await llm.json_extract(
-            system=_SYSTEM, user=user_prompt, schema_hint=_SCHEMA_HINT
+        response = await llm.structured_extract(
+            system=_SYSTEM, user=user_prompt, schema=ResumeParseResponse
         )
-        return data
+        return response.model_dump(exclude_unset=True)
     except Exception as exc:
         logger.error("LLM resume parsing failed: %s", exc)
         return {}
