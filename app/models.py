@@ -140,6 +140,7 @@ class EmailRecord(BaseModel):
     # Rich extraction fields (populated from extraction_json / score_json)
     fit_reasons: list[str] = Field(default_factory=list, description="AI-generated reasons why this is a good fit")
     deadline_text: str | None = None
+    deadline_iso: str | None = Field(default=None, description="ISO-8601 deadline date for calendar integration")
     eligibility: list[str] = Field(default_factory=list)
     benefits: list[str] = Field(default_factory=list)
     location: str | None = None

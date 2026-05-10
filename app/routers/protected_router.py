@@ -183,6 +183,7 @@ def get_dashboard(user: User = Depends(get_current_user), session: Session = Dep
             ),
             fit_reasons=ex_dict.get("fit_reasons", []),
             deadline_text=ex_dict.get("deadline_text"),
+            deadline_iso=ex_dict.get("deadline_iso"),
             eligibility=ex_dict.get("eligibility", []),
             benefits=ex_dict.get("benefits", []),
             location=ex_dict.get("location"),
