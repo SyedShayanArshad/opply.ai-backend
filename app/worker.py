@@ -357,13 +357,23 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
                 steps_text = "\n- ".join(checklist) if checklist else "No specific steps found."
                 opp_type = ex.opportunity_type.value.title() if ex.opportunity_type else "Opportunity"
                 msg = (
-                    f"🚀 *New {opp_type} Found!*\n\n"
-                    f"*Subject:* {email_input.subject}\n"
-                    f"*From:* {email_input.sender}\n"
-                    f"*Score:* {score.total:.1f}/10\n\n"
-                    f"*Summary:*\n{ex.summary}\n\n"
-                    f"*Next Steps:*\n- {steps_text}\n\n"
-                    f"📱 Check your Opply AI dashboard for full details!"
+                    f"🌟 *Opply AI: New Opportunity Detected*\n\n"
+                    f"Greetings,\n\n"
+                    f"A new {opp_type} has been identified that matches your profile.\n\n"
+                    f"📌 *Title:* {ex.title or email_input.subject}\n"
+                    f"🏢 *Organization:* {ex.organization or email_input.sender}\n"
+                    f"🎯 *Match Score:* {score.total:.1f}/10\n"
+                )
+                if ex.deadline_text:
+                    msg += f"⏰ *Deadline:* {ex.deadline_text}\n"
+                
+                msg += (
+                    f"\n*Executive Summary:*\n{ex.summary}\n\n"
+                    f"*Recommended Actions:*\n- {steps_text}\n\n"
+                    f"To view full details and direct links, please visit your dashboard:\n"
+                    f"🔗 https://opply-ai.vercel.app/dashboard\n\n"
+                    f"Best regards,\n"
+                    f"The Opply AI Team"
                 )
                 logger.info("Sending WhatsApp alert to %s for email: %s", user.email, email_input.subject)
                 wa_result = send_whatsapp_alert(user.phone_number, msg)

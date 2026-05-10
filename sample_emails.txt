@@ -1,49 +1,122 @@
 Subject: 2026 Summer Internship Program — Applications Open
-From: careers@acme.com
+From: careers@acme-tech.com
 
-We are excited to announce our 10-week Summer Internship Program for Software Engineering.
+We are excited to announce our 10-week Summer Internship Program for Software Engineering in our Silicon Valley office. This is a great chance for students to work on real-world projects with senior mentors.
 
 Apply by: May 10, 2026
-Eligibility: BSCS/SE students in 5th semester or above.
-Required: CV, transcript, GitHub/portfolio link.
-Apply here: https://acme.com/internships/apply
+Eligibility: Currently enrolled in BSCS/SE or related field, 5th semester or above.
+Location: Palo Alto, CA (Hybrid options available)
+Required: CV, transcript, and a link to your GitHub or personal portfolio.
+Benefits: Competitive stipend, housing assistance, and potential for full-time offer.
+
+Apply here: https://acme-tech.com/internships/apply
 
 ---
 
-Subject: Merit + Need Scholarship (Batch 2026) — Deadline soon
-From: scholarships@university.edu
+Subject: Global Merit + Need Scholarship (Batch 2026) — Apply Now
+From: scholarships@university-foundation.edu
 
-The university is accepting applications for the Merit + Need Scholarship.
+The University Foundation is now accepting applications for the 2026 Global Merit + Need Scholarship. This program supports high-achieving students with financial constraints.
+
 Deadline: April 30, 2026 (11:59 PM)
-Eligibility: Minimum CGPA 3.0, enrolled full-time.
-Documents: Application form, CNIC copy, fee challan, transcript, financial documents.
-Details: https://university.edu/scholarships/merit-need
-Contact: scholarships@university.edu
+Eligibility: Minimum CGPA 3.5, currently enrolled full-time in an undergraduate program.
+Award: Full tuition coverage + $500 monthly living allowance.
+Documents: Application form, personal statement, two recommendation letters, and latest academic transcript.
+Details: https://university-foundation.edu/scholarships/merit-need
+Contact: scholarships@university-foundation.edu
 
 ---
 
-Subject: AI Research Fellowship — Fully Funded
+Subject: AI & Robotics Research Fellowship — Fully Funded
 From: fellowships@researchlab.org
 
-We invite applications for a fully funded AI research fellowship.
+We invite applications for a fully funded AI research fellowship for the Fall 2026 semester. Join our cutting-edge lab to work on autonomous navigation projects.
+
 Apply by: June 15, 2026
-Requirements: Python, ML basics, ability to commit 10 hrs/week.
-Benefits: Stipend, mentorship, certificate.
+Requirements: Strong proficiency in Python, basics of Machine Learning, and a commitment of 15 hours per week.
+Benefits: Monthly stipend, dedicated mentorship from PhD researchers, and travel grants for conferences.
+Location: Remote / Flexible
 Apply: https://researchlab.org/fellowship/apply
 
 ---
 
-Subject: Hackathon: Build for Good — Win prizes
+Subject: Hackathon: Build for Good 2026 — $10,000 Prize Pool
 From: events@hackhub.io
 
-Join our weekend hackathon. Registration closes May 3, 2026.
-Eligibility: University students; teams of up to 4.
+Are you ready to solve real-world problems? Join our annual 48-hour hackathon "Build for Good". We are looking for innovative solutions in the domains of Health, Education, and Sustainability.
+
+Event Dates: May 15-17, 2026
+Registration closes: May 3, 2026.
+Eligibility: University students globally; teams of 2 to 4 members.
+Prizes: $5,000 for 1st place, $3,000 for 2nd, and $2,000 for 3rd. Plus cloud credits for all finalists!
 Register: https://hackhub.io/build-for-good
 
 ---
 
-Subject: Newsletter April — Campus Updates
+Subject: Google Developer Student Clubs - Chapter Lead Applications
+From: info@google-developers.com
+
+Passionate about technology and community building? Applications for the next term of GDSC Chapter Leads are now open! Lead a community on your campus and help students grow their technical skills.
+
+Deadline: May 25, 2026
+Eligibility: Undergraduate or graduate students with at least one year left in their degree.
+Expectations: Organize workshops, build projects, and collaborate with other tech leads globally.
+Apply: https://developers.google.com/community/gdsc/leads/apply
+
+---
+
+Subject: [Important] Your Monthly Account Statement - April 2026
+From: billing@cloudservices.com
+
+Your monthly billing statement for April 2026 is now available. 
+Summary:
+Previous Balance: $0.00
+Current Charges: $12.45
+Total Amount Due: $12.45
+Due Date: May 5, 2026
+
+Please log in to your dashboard to view the detailed breakdown.
+
+---
+
+Subject: Weekly Newsletter: Campus Life & Cafeteria Updates
 From: newsletter@university.edu
 
-This is the monthly newsletter with campus updates, cafeteria timings, and announcements.
-To unsubscribe click here.
+Hello students! Here is what's happening on campus this week:
+- The main cafeteria will now serve breakfast from 7:00 AM.
+- New library hours: 8 AM to Midnight.
+- Lost and Found: A blue backpack was found in the sports complex.
+- Upcoming Maintenance: Central AC will be serviced this Sunday.
+
+To unsubscribe from this newsletter, click here.
+
+---
+
+Subject: Limited Time Offer: 50% Off Premium Membership!
+From: marketing@learnfast.io
+
+Unlock your full potential with LearnFast Premium! For the next 48 hours, get a 50% discount on our annual plan. Access thousands of courses in Coding, Design, and Business.
+
+Claim your discount: https://learnfast.io/promo/half-off
+
+---
+
+Subject: Volunteer Opportunity: Local Food Bank Drive
+From: volunteer@cityrelief.org
+
+The City Relief Food Bank is looking for volunteers to help with our upcoming food distribution drive this Saturday. 
+
+Date: May 12, 2026
+Time: 9:00 AM to 3:00 PM
+Location: Downtown Community Center
+Sign up: https://cityrelief.org/volunteer/signup
+Note: This is a non-paid, community service position.
+
+---
+
+Subject: Reminder: Password Reset Required
+From: security@university-portal.edu
+
+Your university portal password will expire in 3 days. Please visit the portal to update your credentials and ensure uninterrupted access to your academic records and course materials.
+
+Update now: https://portal.university.edu/security/reset
