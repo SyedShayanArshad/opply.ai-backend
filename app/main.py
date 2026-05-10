@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 
 from .db import init_db
 from .routers.auth_router import router as auth_router
@@ -21,6 +22,29 @@ logger = logging.getLogger("app")
 
 app = FastAPI(title="Opply AI", version="0.2.0")
 
+# ── CORS must be registered immediately after app creation, BEFORE routers ──
+# In Starlette, middleware wraps the app in registration order. If routers are
+# included first, the CORS middleware won't wrap those handlers, so preflight
+# OPTIONS requests will get no Access-Control-Allow-Origin header.
+import os as _os
+
+_frontend_origin = _os.getenv("FRONTEND_ORIGIN", "").rstrip("/") or "https://opply-ai.vercel.app"
+
+origins = list({
+    _frontend_origin,
+    "https://opply-ai.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+})
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.on_event("startup")
 def on_startup():
@@ -34,37 +58,6 @@ app.include_router(protected_router)
 _llm = MistralLLM()
 
 
-def _cors_origin() -> str:
-    import os
-    frontend_origin = os.getenv("FRONTEND_ORIGIN")
-    if not frontend_origin:
-        if os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_URL"):
-            frontend_origin = "https://opply-ai.vercel.app"
-        else:
-            frontend_origin = "http://localhost:5173"
-            
-    # Clean the origin: remove trailing slash if present
-    if frontend_origin.endswith("/"):
-        frontend_origin = frontend_origin[:-1]
-    return frontend_origin
-
-
-origins = [
-    _cors_origin(),
-    "https://opply-ai.vercel.app",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -74,9 +67,11 @@ def health() -> dict[str, Any]:
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(_, exc: Exception):
+async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.exception("Unhandled error: %s", exc)
-    return JSONResponse(
+    origin = request.headers.get("origin", "")
+    
+    response = JSONResponse(
         status_code=500,
         content={
             "error": "internal_error",
@@ -84,6 +79,32 @@ async def unhandled_exception_handler(_, exc: Exception):
             "hint": "Check backend logs; if using Mistral, confirm MISTRAL_API_KEY is set.",
         },
     )
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.warning("Validation error: %s", exc)
+    origin = request.headers.get("origin", "")
+    
+    response = JSONResponse(
+        status_code=422,
+        content={
+            "error": "validation_error",
+            "detail": str(exc),
+        },
+    )
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
 
 
 @app.websocket("/ws")
