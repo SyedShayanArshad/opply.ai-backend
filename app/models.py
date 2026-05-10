@@ -137,6 +137,15 @@ class EmailRecord(BaseModel):
     links: list[str] = Field(default_factory=list)
     source: str = "manual"
     created_at: str | None = None
+    # Rich extraction fields (populated from extraction_json / score_json)
+    fit_reasons: list[str] = Field(default_factory=list, description="AI-generated reasons why this is a good fit")
+    deadline_text: str | None = None
+    eligibility: list[str] = Field(default_factory=list)
+    benefits: list[str] = Field(default_factory=list)
+    location: str | None = None
+    organization: str | None = None
+    opportunity_title: str | None = None
+    score_breakdown: dict[str, Any] | None = Field(default=None, description="fit, urgency, completeness breakdown")
 
 
 class AnalyzeRequest(BaseModel):

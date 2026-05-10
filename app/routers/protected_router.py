@@ -161,6 +161,8 @@ def get_dashboard(user: User = Depends(get_current_user), session: Session = Dep
 
     for r in records:
         ex_data = json.loads(r.extraction_json) if r.extraction_json else {}
+        ex_dict = ex_data if isinstance(ex_data, dict) else {}
+        score_data = json.loads(r.score_json) if r.score_json else {}
         er = EmailRecord(
             email_id=r.email_id,
             subject=r.subject,
@@ -171,7 +173,7 @@ def get_dashboard(user: User = Depends(get_current_user), session: Session = Dep
             score=r.score,
             summary=r.summary,
             detailed_actions=json.loads(r.detailed_actions_json) if r.detailed_actions_json else [],
-            links=ex_data.get("links", []) if isinstance(ex_data, dict) else [],
+            links=ex_dict.get("links", []),
             source=getattr(r, "source", "manual"),
             created_at=(
                 r.created_at.strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z'
@@ -179,14 +181,22 @@ def get_dashboard(user: User = Depends(get_current_user), session: Session = Dep
                 else r.created_at.isoformat().replace('+00:00', 'Z')
                 if r.created_at else None
             ),
+            fit_reasons=ex_dict.get("fit_reasons", []),
+            deadline_text=ex_dict.get("deadline_text"),
+            eligibility=ex_dict.get("eligibility", []),
+            benefits=ex_dict.get("benefits", []),
+            location=ex_dict.get("location"),
+            organization=ex_dict.get("organization"),
+            opportunity_title=ex_dict.get("title"),
+            score_breakdown=score_data if r.classification == "important" and score_data else None,
         )
         email_records.append(er)
 
         if r.classification == "important":
-            score_data = json.loads(r.score_json) if r.score_json else {"total": r.score or 0.0, "fit": 0.0, "urgency": 0.0, "completeness": 0.0}
+            score_data_ranked = score_data if score_data else {"total": r.score or 0.0, "fit": 0.0, "urgency": 0.0, "completeness": 0.0}
 
             ex = OpportunityExtraction(**ex_data)
-            sc = ScoreBreakdown(**score_data)
+            sc = ScoreBreakdown(**score_data_ranked)
 
             ranked.append(RankedOpportunity(
                 email_id=r.email_id,
@@ -197,6 +207,7 @@ def get_dashboard(user: User = Depends(get_current_user), session: Session = Dep
                 reasons=[r.explanation],
                 action_checklist=er.detailed_actions
             ))
+
         else:
             discarded.append({
                 "email_id": r.email_id,
