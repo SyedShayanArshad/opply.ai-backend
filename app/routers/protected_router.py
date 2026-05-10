@@ -369,6 +369,21 @@ async def analyze_manual(req: ManualAnalyzeRequest, user: User = Depends(get_cur
                 msg += (
                     f"\n*Executive Summary:*\n{ex.summary}\n\n"
                     f"*Recommended Actions:*\n- {steps_text}\n\n"
+                )
+                
+                from ..utils import generate_google_calendar_url
+                cal_url = generate_google_calendar_url(
+                    title=ex.title or em.subject or "",
+                    organization=ex.organization or em.sender or "",
+                    summary=ex.summary or "",
+                    location=ex.location or "",
+                    deadline_iso=ex.deadline_iso,
+                    links=ex.links or []
+                )
+                if cal_url:
+                    msg += f"📅 *Save to Calendar:*\n🔗 {cal_url}\n\n"
+
+                msg += (
                     f"To view full details and direct links, please visit your dashboard:\n"
                     f"🔗 https://opply-ai.vercel.app/dashboard\n\n"
                     f"Best regards,\n"

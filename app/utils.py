@@ -44,3 +44,34 @@ def clamp(v: float, lo: float, hi: float) -> float:
 
 def safe_str(x: str | None) -> str:
     return (x or "").strip()
+
+
+import urllib.parse
+from datetime import timedelta
+
+def generate_google_calendar_url(title: str, organization: str, summary: str, location: str, deadline_iso: str | None, links: list[str]) -> str:
+    if not deadline_iso:
+        return ""
+    try:
+        # Expected format: ISO-8601 string, e.g. "2026-06-15T00:00:00Z"
+        # Google calendar all-day event format: YYYYMMDD/YYYYMMDD
+        dt = datetime.fromisoformat(deadline_iso.replace("Z", "+00:00"))
+        start_date = dt.strftime("%Y%m%d")
+        end_date = (dt + timedelta(days=1)).strftime("%Y%m%d")
+        
+        parts = []
+        if organization: parts.append(f"Organization: {organization}")
+        if summary: parts.append(f"\nSummary:\n{summary}")
+        if links: parts.append(f"\nLinks:\n" + "\n".join(links[:3]))
+        parts.append("\n— Added via Opply AI")
+        
+        params = {
+            "action": "TEMPLATE",
+            "text": f"📌 {title}",
+            "dates": f"{start_date}/{end_date}",
+            "details": "\n".join(parts),
+            "location": location or ""
+        }
+        return "https://calendar.google.com/calendar/render?" + urllib.parse.urlencode(params)
+    except Exception as e:
+        return ""
