@@ -32,7 +32,9 @@ def _decode_gmail_body(data: str | None) -> str:
         return ""
     try:
         padded = data + "=" * (-len(data) % 4)
-        return base64.urlsafe_b64decode(padded.encode("utf-8")).decode("utf-8", errors="ignore")
+        return base64.urlsafe_b64decode(padded.encode("utf-8")).decode(
+            "utf-8", errors="ignore"
+        )
     except Exception:
         return ""
 
@@ -120,7 +122,9 @@ async def _refresh_google_access_token(user: User, session: Session) -> bool:
         return False
 
 
-async def fetch_unseen_emails(user: User, session: Session, last_sync_date: datetime | None = None) -> list[dict[str, Any]]:
+async def fetch_unseen_emails(
+    user: User, session: Session, last_sync_date: datetime | None = None
+) -> list[dict[str, Any]]:
     access_token = user.google_access_token
     if not access_token:
         return []
@@ -129,10 +133,13 @@ async def fetch_unseen_emails(user: User, session: Session, last_sync_date: date
     if user.token_expiry and user.token_expiry <= (now_ts + 30):
         refreshed = await _refresh_google_access_token(user, session)
         if not refreshed:
-            await manager.send_personal_message({
-                "type": "error",
-                "message": "Gmail session expired or revoked. Please reconnect your Google account in Settings."
-            }, user.id)
+            await manager.send_personal_message(
+                {
+                    "type": "error",
+                    "message": "Gmail session expired or revoked. Please reconnect your Google account in Settings.",
+                },
+                user.id,
+            )
             return []
         access_token = user.google_access_token
 
@@ -165,18 +172,24 @@ async def fetch_unseen_emails(user: User, session: Session, last_sync_date: date
             if list_resp.status_code == 403:
                 err_msg = list_resp.json().get("error", {}).get("message", "")
                 if "disabled" in err_msg.lower():
-                    await manager.send_personal_message({
-                        "type": "error",
-                        "message": "Gmail API is disabled in your Google Cloud Project. Please enable it at the URL shown in your Google Cloud Console."
-                    }, user.id)
+                    await manager.send_personal_message(
+                        {
+                            "type": "error",
+                            "message": "Gmail API is disabled in your Google Cloud Project. Please enable it at the URL shown in your Google Cloud Console.",
+                        },
+                        user.id,
+                    )
                     logger.error("Gmail API disabled for %s: %s", user.email, err_msg)
                 return []
             elif list_resp.status_code != 200:
                 logger.error("Gmail API error for %s: %s", user.email, list_resp.text)
-                await manager.send_personal_message({
-                    "type": "error",
-                    "message": f"Gmail sync failed: API returned status {list_resp.status_code}. This might be a temporary Google service issue."
-                }, user.id)
+                await manager.send_personal_message(
+                    {
+                        "type": "error",
+                        "message": f"Gmail sync failed: API returned status {list_resp.status_code}. This might be a temporary Google service issue.",
+                    },
+                    user.id,
+                )
                 return []
 
             message_refs = list_resp.json().get("messages", []) or []
@@ -196,7 +209,9 @@ async def fetch_unseen_emails(user: User, session: Session, last_sync_date: date
                     continue
 
                 payload = message_resp.json()
-                headers_map = _gmail_headers_to_map(payload.get("payload", {}).get("headers"))
+                headers_map = _gmail_headers_to_map(
+                    payload.get("payload", {}).get("headers")
+                )
                 text_parts = _collect_text_parts(payload.get("payload"))
                 body_text = "\n\n".join([t for t in text_parts if t.strip()])
 
@@ -215,18 +230,21 @@ async def fetch_unseen_emails(user: User, session: Session, last_sync_date: date
             return emails_fetched
     except Exception as e:
         logger.error("Gmail fetch error for %s: %s", user.email, e)
-        await manager.send_personal_message({
-            "type": "error",
-            "message": f"Gmail connection error: {str(e)}"
-        }, user.id)
+        await manager.send_personal_message(
+            {"type": "error", "message": f"Gmail connection error: {str(e)}"}, user.id
+        )
         return []
 
 
-async def process_user_emails(user: User, db_profile: DBStudentProfile, session: Session):
+async def process_user_emails(
+    user: User, db_profile: DBStudentProfile, session: Session
+):
     if not user.google_access_token:
         return
 
-    new_emails = await fetch_unseen_emails(user, session, last_sync_date=user.last_sync_date)
+    new_emails = await fetch_unseen_emails(
+        user, session, last_sync_date=user.last_sync_date
+    )
 
     # Always update sync date so we don't look backwards indefinitely
     user.last_sync_date = datetime.now(timezone.utc)
@@ -234,14 +252,28 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
     session.commit()
 
     if not new_emails:
-        await manager.send_personal_message({"type": "sync_complete", "message": "Gmail sync complete. No new emails found."}, user.id)
+        await manager.send_personal_message(
+            {
+                "type": "sync_complete",
+                "message": "Gmail sync complete. No new emails found.",
+            },
+            user.id,
+        )
         return
 
     logger.info("Found %d new emails for %s", len(new_emails), user.email)
-    await manager.send_personal_message({"type": "progress", "message": f"Found {len(new_emails)} new emails. Analyzing..."}, user.id)
+    await manager.send_personal_message(
+        {
+            "type": "progress",
+            "message": f"Found {len(new_emails)} new emails. Analyzing...",
+        },
+        user.id,
+    )
 
     profile = _db_profile_to_pydantic(db_profile)
-    profile_summary = db_profile.profile_summary or await build_profile_summary(profile, _llm)
+    profile_summary = db_profile.profile_summary or await build_profile_summary(
+        profile, _llm
+    )
     base = now_utc()
 
     # ── Build per-user RAG profile vector store (cached if profile unchanged) ──
@@ -251,7 +283,10 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
         if rag_ready:
             logger.info("RAG profile store ready for user %s", user.email)
         else:
-            logger.info("RAG store unavailable for user %s — using plain profile context", user.email)
+            logger.info(
+                "RAG store unavailable for user %s — using plain profile context",
+                user.email,
+            )
     except Exception as rag_err:
         logger.warning("RAG store build failed for user %s: %s", user.email, rag_err)
 
@@ -259,7 +294,11 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
         message_id = em["message_id"]
 
         # Check if already processed
-        exists = session.exec(select(DBEmailRecord).where(DBEmailRecord.email_id == message_id, DBEmailRecord.user_id == user.id)).first()
+        exists = session.exec(
+            select(DBEmailRecord).where(
+                DBEmailRecord.email_id == message_id, DBEmailRecord.user_id == user.id
+            )
+        ).first()
         if exists:
             continue
 
@@ -269,13 +308,21 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
             subject=parsed["subject"],
             sender=parsed["sender"],
             body=parsed["body"],
-            raw=em["raw"]
+            raw=em["raw"],
         )
 
-        await manager.send_personal_message({"type": "progress", "message": f"Analyzing: {email_input.subject[:40]}..."}, user.id)
+        await manager.send_personal_message(
+            {
+                "type": "progress",
+                "message": f"Analyzing: {email_input.subject[:40]}...",
+            },
+            user.id,
+        )
 
         # ── Retrieve RAG context for this specific email ──────────────────────
-        email_query_text = f"{email_input.subject or ''} {email_input.body or ''}"[:1200]
+        email_query_text = f"{email_input.subject or ''} {email_input.body or ''}"[
+            :1200
+        ]
         rag_context = ""
         if rag_ready:
             try:
@@ -283,7 +330,9 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
                     retrieve_relevant_context, email_query_text, user.id, 3
                 )
             except Exception as rc_err:
-                logger.warning("RAG retrieval failed for email %s: %s", message_id, rc_err)
+                logger.warning(
+                    "RAG retrieval failed for email %s: %s", message_id, rc_err
+                )
 
         # ── Run RAG-augmented extraction ──────────────────────────────────────
         ex = await extract_opportunity(
@@ -318,7 +367,9 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
                 source="gmail",
             )
         else:
-            score, reasons = score_opportunity(profile, ex, base=base, rag_context=rag_context)
+            score, reasons = score_opportunity(
+                profile, ex, base=base, rag_context=rag_context
+            )
             explanation = await build_record_explanation(
                 classification="important",
                 profile_summary=profile_summary,
@@ -332,7 +383,9 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
             checklist = []
             checklist.extend(ex.next_steps[:4])
             if ex.required_documents:
-                checklist.append("Gather required documents: " + ", ".join(ex.required_documents[:6]))
+                checklist.append(
+                    "Gather required documents: " + ", ".join(ex.required_documents[:6])
+                )
             if ex.links:
                 checklist.append("Apply / learn more: " + ex.links[0])
 
@@ -343,7 +396,9 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
                 sender=email_input.sender or "",
                 classification="important",
                 explanation=explanation,
-                opportunity_type=ex.opportunity_type.value if ex.opportunity_type else None,
+                opportunity_type=(
+                    ex.opportunity_type.value if ex.opportunity_type else None
+                ),
                 score=score.total,
                 summary=ex.summary,
                 detailed_actions_json=json.dumps(checklist),
@@ -351,35 +406,42 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
                 score_json=score.model_dump_json(),
                 source="gmail",
             )
-            
+
             # WhatsApp Alert Integration
             if user.whatsapp_enabled and user.phone_number:
-                steps_text = "\n- ".join(checklist) if checklist else "No specific steps found."
-                opp_type = ex.opportunity_type.value.title() if ex.opportunity_type else "Opportunity"
+                steps_text = (
+                    "\n- ".join(checklist) if checklist else "No specific steps found."
+                )
+                opp_type = (
+                    ex.opportunity_type.value.title()
+                    if ex.opportunity_type
+                    else "Opportunity"
+                )
                 msg = (
                     f"🌟 *Opply AI: New Opportunity Detected*\n\n"
                     f"Greetings,\n\n"
                     f"A new {opp_type} has been identified that matches your profile.\n\n"
                     f"📌 *Title:* {ex.title or email_input.subject}\n"
                     f"🏢 *Organization:* {ex.organization or email_input.sender}\n"
-                    f"🎯 *Match Score:* {score.total:.1f}/10\n"
+                    f"🎯 *Match Score:* {score.total:.1f}/100\n"
                 )
                 if ex.deadline_text:
                     msg += f"⏰ *Deadline:* {ex.deadline_text}\n"
-                
+
                 msg += (
                     f"\n*Executive Summary:*\n{ex.summary}\n\n"
                     f"*Recommended Actions:*\n- {steps_text}\n\n"
                 )
-                
+
                 from .utils import generate_google_calendar_url
+
                 cal_url = generate_google_calendar_url(
                     title=ex.title or email_input.subject or "",
                     organization=ex.organization or email_input.sender or "",
                     summary=ex.summary or "",
                     location=ex.location or "",
                     deadline_iso=ex.deadline_iso,
-                    links=ex.links or []
+                    links=ex.links or [],
                 )
                 if cal_url:
                     msg += f"📅 *Save to Calendar:*\n🔗 {cal_url}\n\n"
@@ -390,21 +452,30 @@ async def process_user_emails(user: User, db_profile: DBStudentProfile, session:
                     f"Best regards,\n"
                     f"The Opply AI Team"
                 )
-                logger.info("Sending WhatsApp alert to %s for email: %s", user.email, email_input.subject)
+                logger.info(
+                    "Sending WhatsApp alert to %s for email: %s",
+                    user.email,
+                    email_input.subject,
+                )
                 wa_result = send_whatsapp_alert(user.phone_number, msg)
-                await manager.send_personal_message({
-                    "type": "whatsapp_status",
-                    "success": wa_result["success"],
-                    "error_reason": wa_result["error_reason"],
-                    "subject": email_input.subject,
-                }, user.id)
+                await manager.send_personal_message(
+                    {
+                        "type": "whatsapp_status",
+                        "success": wa_result["success"],
+                        "error_reason": wa_result["error_reason"],
+                        "subject": email_input.subject,
+                    },
+                    user.id,
+                )
 
         session.add(record)
         session.commit()
         logger.info("Processed email %s for user %s", message_id, user.email)
         await manager.send_personal_message({"type": "new_record"}, user.id)
 
-    await manager.send_personal_message({"type": "sync_complete", "message": "Gmail sync complete."}, user.id)
+    await manager.send_personal_message(
+        {"type": "sync_complete", "message": "Gmail sync complete."}, user.id
+    )
 
 
 async def background_worker_loop():
@@ -415,7 +486,11 @@ async def background_worker_loop():
                 # Cleanup emails older than 7 days to manage DB storage
                 # Use naive datetime for comparison as SQLite/SQLModel often stores them naively
                 seven_days_ago = datetime.now() - timedelta(days=7)
-                old_emails = session.exec(select(DBEmailRecord).where(DBEmailRecord.created_at < seven_days_ago)).all()
+                old_emails = session.exec(
+                    select(DBEmailRecord).where(
+                        DBEmailRecord.created_at < seven_days_ago
+                    )
+                ).all()
                 if old_emails:
                     for old_em in old_emails:
                         session.delete(old_em)
@@ -424,13 +499,20 @@ async def background_worker_loop():
 
                 users = session.exec(select(User)).all()
                 for user in users:
-                    profile = session.exec(select(DBStudentProfile).where(DBStudentProfile.user_id == user.id)).first()
+                    profile = session.exec(
+                        select(DBStudentProfile).where(
+                            DBStudentProfile.user_id == user.id
+                        )
+                    ).first()
 
                     if not profile:
                         # Notify user to set up profile if they have a WS connection
                         await manager.send_personal_message(
-                            {"type": "setup_required", "message": "Please complete your profile to enable email classification."},
-                            user.id
+                            {
+                                "type": "setup_required",
+                                "message": "Please complete your profile to enable email classification.",
+                            },
+                            user.id,
                         )
                         continue
 

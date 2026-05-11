@@ -11,6 +11,7 @@ from ..profile_summary import build_profile_summary
 from ..record_explanation import build_record_explanation
 from ..worker import process_user_emails
 from ..utils import now_utc
+from datetime import datetime, timezone, timedelta
 from ..resume_parser import extract_text_from_file, parse_resume_with_llm
 from ..models import ResumeParseResponse
 import json
@@ -219,6 +220,13 @@ def get_dashboard(user: User = Depends(get_current_user), session: Session = Dep
 
     ranked.sort(key=lambda x: x.score.total, reverse=True)
 
+    # Calculate "Today" stats (UTC start of day)
+    now = datetime.now(timezone.utc)
+    start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    processed_today = sum(1 for r in records if r.created_at and r.created_at >= start_of_today)
+    important_today = sum(1 for r in records if r.created_at and r.created_at >= start_of_today and r.classification == "important")
+
     # Check profile status for meta
     db_profile = session.exec(select(DBStudentProfile).where(DBStudentProfile.user_id == user.id)).first()
 
@@ -230,6 +238,8 @@ def get_dashboard(user: User = Depends(get_current_user), session: Session = Dep
             "important": len(ranked),
             "not_important": len(discarded),
             "total_emails": len(records),
+            "processed_today": processed_today,
+            "important_today": important_today,
             "oauth_connected": bool(user.google_access_token),
             "connected_email": user.connected_email,
             "has_profile": db_profile is not None,
@@ -361,7 +371,7 @@ async def analyze_manual(req: ManualAnalyzeRequest, user: User = Depends(get_cur
                     f"A new {opp_type} has been identified that matches your profile.\n\n"
                     f"📌 *Title:* {ex.title or em.subject}\n"
                     f"🏢 *Organization:* {ex.organization or em.sender}\n"
-                    f"🎯 *Match Score:* {score.total:.1f}/10\n"
+                    f"🎯 *Match Score:* {score.total:.1f}/100\n"
                 )
                 if ex.deadline_text:
                     msg += f"⏰ *Deadline:* {ex.deadline_text}\n"
