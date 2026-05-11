@@ -413,7 +413,8 @@ async def background_worker_loop():
         try:
             with Session(engine) as session:
                 # Cleanup emails older than 7 days to manage DB storage
-                seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+                # Use naive datetime for comparison as SQLite/SQLModel often stores them naively
+                seven_days_ago = datetime.now() - timedelta(days=7)
                 old_emails = session.exec(select(DBEmailRecord).where(DBEmailRecord.created_at < seven_days_ago)).all()
                 if old_emails:
                     for old_em in old_emails:

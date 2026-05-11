@@ -13,7 +13,7 @@ The 'fit' component is now 100% semantic and RAG-driven.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from .models import OpportunityExtraction, ScoreBreakdown, StudentProfile
 from .utils import clamp, parse_deadline_to_datetime
 
@@ -67,6 +67,8 @@ def score_opportunity(
     if ex.deadline_iso:
         try:
             deadline_dt = datetime.fromisoformat(ex.deadline_iso)
+            if deadline_dt and deadline_dt.tzinfo is None:
+                deadline_dt = deadline_dt.replace(tzinfo=timezone.utc)
         except Exception:
             deadline_dt = None
     
