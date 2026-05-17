@@ -224,8 +224,14 @@ def get_dashboard(user: User = Depends(get_current_user), session: Session = Dep
     now = datetime.now(timezone.utc)
     start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     
-    processed_today = sum(1 for r in records if r.created_at and r.created_at >= start_of_today)
-    important_today = sum(1 for r in records if r.created_at and r.created_at >= start_of_today and r.classification == "important")
+    def _aware(dt):
+        """Return a UTC-aware datetime regardless of whether dt is naive or aware."""
+        if dt is None:
+            return None
+        return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+    processed_today = sum(1 for r in records if r.created_at and _aware(r.created_at) >= start_of_today)
+    important_today = sum(1 for r in records if r.created_at and _aware(r.created_at) >= start_of_today and r.classification == "important")
 
     # Check profile status for meta
     db_profile = session.exec(select(DBStudentProfile).where(DBStudentProfile.user_id == user.id)).first()
